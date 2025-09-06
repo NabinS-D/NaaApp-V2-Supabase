@@ -1,0 +1,107 @@
+{
+  "name": "mynaaapp",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "jest --watchAll",
+    "lint": "expo lint",
+    "prebuild": "npx expo prebuild",
+    "build:android": "npx eas-cli build --profile production --platform android",
+    "eject": "expo eject"
+  },
+  "jest": {
+    "preset": "jest-expo"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false,
+        "exclude": [
+          "@react-native-community/blur",
+          "react-native-fs",
+          "@emotion/react",
+          "@emotion/styled",
+          "tailwindcss"
+        ]
+      }
+    },
+    "android": {
+      "hermesEnabled": true
+    }
+  },
+  "dependencies": {
+    "@expo/config-plugins": "~9.0.0",
+    "@expo/prebuild-config": "~8.0.0",
+    "@expo/vector-icons": "~14.0.4",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/datetimepicker": "^8.4.4",
+    "@react-native-community/netinfo": "11.4.1",
+    "@react-native-google-signin/google-signin": "^15.0.0",
+    "@react-native-picker/picker": "2.9.0",
+    "@react-navigation/drawer": "^7.1.1",
+    "@react-navigation/native": "^7.0.14",
+    "@supabase/supabase-js": "^2.57.0",
+    "date-fns": "^4.1.0",
+    "expo": "~52.0.36",
+    "expo-camera": "~16.0.18",
+    "expo-checkbox": "~4.0.1",
+    "expo-constants": "~17.0.7",
+    "expo-dev-client": "~5.0.20",
+    "expo-document-picker": "~13.0.3",
+    "expo-file-system": "~18.0.12",
+    "expo-font": "~13.0.4",
+    "expo-image-manipulator": "~13.0.6",
+    "expo-image-picker": "16.0.6",
+    "expo-linear-gradient": "~14.0.2",
+    "expo-linking": "~7.0.4",
+    "expo-media-library": "~17.0.6",
+    "expo-router": "~4.0.21",
+    "expo-splash-screen": "^0.29.24",
+    "expo-status-bar": "~2.0.1",
+    "expo-system-ui": "~4.0.8",
+    "expo-updates": "~0.27.2",
+    "firebase": "^11.3.1",
+    "nativewind": "^4.1.23",
+    "onesignal-expo-plugin": "^2.0.3",
+    "papaparse": "^5.5.3",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "react-native-date-picker": "^5.0.13",
+    "react-native-document-picker": "^9.3.1",
+    "react-native-fs": "^2.20.0",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-gifted-charts": "^1.4.60",
+    "react-native-html-to-pdf": "^0.12.0",
+    "react-native-linear-gradient": "^2.8.3",
+    "react-native-modal": "^14.0.0-rc.1",
+    "react-native-onesignal": "^5.2.9",
+    "react-native-paper": "^5.13.1",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-saf-x": "^2.2.3",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-svg": "15.8.0",
+    "react-native-vector-icons": "^10.2.0",
+    "react-native-web": "~0.19.13",
+    "react-native-webview": "13.12.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "latest",
+    "babel-plugin-dotenv-import": "^3.0.1",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-preset-expo": "^12.0.7",
+    "eas-cli": "~15.0.15",
+    "jest": "^29.2.1",
+    "jest-expo": "~52.0.5",
+    "react-test-renderer": "18.3.1",
+    "tailwindcss": "^3.4.17"
+  },
+  "private": true
+}

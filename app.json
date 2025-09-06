@@ -1,0 +1,87 @@
+{
+  "expo": {
+    "name": "NaaApp",
+    "slug": "mynaaapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/naal.png",
+    "scheme": "mynaaapp",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.NaaApp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/naal.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.NaaApp"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/naal.png"
+    },
+    "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ],
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/naal.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+      "SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY": "$EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "768a7dec-4695-461f-8661-d4a81dd09fd2",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "OneSignalNotificationServiceExtension",
+                  "bundleIdentifier": "com.NaaApp.OneSignalNotificationServiceExtension",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.NaaApp.onesignal"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "owner": "officialacc",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/768a7dec-4695-461f-8661-d4a81dd09fd2"
+    },
+    "runtimeVersion": "1.0.0"
+  }
+}
