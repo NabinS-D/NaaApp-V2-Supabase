@@ -207,7 +207,7 @@ export default function App() {
             <GoogleAuth
               onSuccess={async () => {
                 await checkAuth();
-                router.replace("/(tabs)/dashboard");
+                router.replace("/(tabs)/home");
               }}
               onError={(error) => {
                 showAlert("Google Sign-In Error", error.message, "error");

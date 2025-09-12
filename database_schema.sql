@@ -59,6 +59,18 @@ CREATE TABLE public.messages (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create budgets table
+CREATE TABLE public.budgets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  category_id UUID REFERENCES public.categories(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  period TEXT NOT NULL DEFAULT 'monthly', -- 'weekly', 'monthly', 'yearly'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create storage bucket for receipts and profile pictures
 INSERT INTO storage.buckets (id, name, public) VALUES ('receipts', 'receipts', true);
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
@@ -98,6 +110,13 @@ CREATE POLICY "Users can view own messages" ON public.messages FOR SELECT USING 
 CREATE POLICY "Users can insert own messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
 CREATE POLICY "Users can update own messages" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
+-- Budgets table policies
+ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own budgets" ON public.budgets FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own budgets" ON public.budgets FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own budgets" ON public.budgets FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own budgets" ON public.budgets FOR DELETE USING (auth.uid() = user_id);
+
 -- Storage policies
 CREATE POLICY "Users can upload own receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);
 CREATE POLICY "Users can view own receipts" ON storage.objects FOR SELECT USING (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);
@@ -118,6 +137,9 @@ CREATE INDEX idx_ai_chats_created_at ON public.ai_chats(created_at DESC);
 CREATE INDEX idx_messages_sender_id ON public.messages(sender_id);
 CREATE INDEX idx_messages_receiver_id ON public.messages(receiver_id);
 CREATE INDEX idx_messages_created_at ON public.messages(created_at DESC);
+CREATE INDEX idx_budgets_user_id ON public.budgets(user_id);
+CREATE INDEX idx_budgets_category_id ON public.budgets(category_id);
+CREATE INDEX idx_budgets_created_at ON public.budgets(created_at DESC);
 
 -- Function to handle user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()

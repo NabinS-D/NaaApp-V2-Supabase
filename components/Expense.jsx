@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, memo, useMemo, useRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
-import {
+import { 
   View,
   Text,
   TouchableOpacity,
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  TextInput,
   Image,
   Pressable,
 } from "react-native";
@@ -28,10 +27,11 @@ import useAlertContext from "../context/AlertProvider.js";
 import QRScanner from "./QRScanner.jsx";
 import ExpenseFilter from "./ExpenseFilter.jsx";
 import CSVUploader from "./CSVUploader.jsx";
+import ExpenseSearch from "./ExpenseSearch.jsx";
 import { processImageWithOCR, parseOCRText } from "../lib/ocr.js";
 
-// Memoized Header Buttons Component
-const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onScanReceipt, onScanQR, onFilter, onCSVUpload }) => (
+// Header Buttons Component
+const HeaderButtons = ({ onAddExpense, onAddCategory, onListCategories, onScanReceipt, onScanQR, onFilter, onCSVUpload }) => (
   <View className="mb-8">
     {/* All Action Buttons - 2 per row */}
     <View className="flex-row flex-wrap justify-between gap-y-3">
@@ -60,7 +60,7 @@ const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onS
           title="Add Category"
           handlePress={onAddCategory}
           containerStyles="w-full"
-          buttoncolor="bg-green-500"
+          buttoncolor="bg-orange-500"
           textStyles="text-white text-sm font-pmedium text-center"
         />
       </View>
@@ -70,7 +70,7 @@ const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onS
           title="Categories"
           handlePress={onListCategories}
           containerStyles="w-full"
-          buttoncolor="bg-orange-500"
+          buttoncolor="bg-cyan-500"
           textStyles="text-white text-sm font-pmedium text-center"
         />
       </View>
@@ -80,7 +80,7 @@ const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onS
           title="Scan Receipt"
           handlePress={onScanReceipt}
           containerStyles="w-full"
-          buttoncolor="bg-cyan-500"
+          buttoncolor="bg-indigo-500"
           textStyles="text-white text-sm font-pmedium text-center"
         />
       </View>
@@ -90,7 +90,7 @@ const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onS
           title="Scan QR"
           handlePress={onScanQR}
           containerStyles="w-full"
-          buttoncolor="bg-indigo-500"
+          buttoncolor="bg-emerald-500"
           textStyles="text-white text-sm font-pmedium text-center"
         />
       </View>
@@ -101,14 +101,14 @@ const HeaderButtons = memo(({ onAddExpense, onAddCategory, onListCategories, onS
           title="Import CSV"
           handlePress={onCSVUpload}
           containerStyles="w-full"
-          buttoncolor="bg-emerald-500"
+          buttoncolor="bg-teal-500"
           textStyles="text-white text-sm font-pmedium text-center"
         />
       </View>
     </View>
   </View>
 
-));
+);
 
 // Memoized Category Item Component
 const CategoryItem = memo(({ item, total, onPress }) => (
@@ -156,7 +156,7 @@ const CategoriesList = memo(({ categories, categoryTotals }) => {
 });
 
 // Memoized Expense Item Component
-const ExpenseItem = memo(({ item, onLongPress, isSelected, onSelect, onDelete, onViewReceipt }) => {
+const ExpenseItem = memo(({ item, onLongPress, isSelected, onSelect, onDelete, onViewReceipt, onViewDetail }) => {
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleString("en-US", {
@@ -173,15 +173,17 @@ const ExpenseItem = memo(({ item, onLongPress, isSelected, onSelect, onDelete, o
   return (
     <TouchableOpacity
       onLongPress={() => onLongPress(item)}
-      onPress={() => onSelect(item)}
+      onPress={() => onViewDetail(item)}
     >
       <View className="bg-white p-4 rounded-lg mb-2 flex-row justify-between items-center">
         <View className="flex-1 flex-row gap-2 items-center mr-2">
-          <MaterialIcons
-            name={isSelected ? "check-box" : "check-box-outline-blank"}
-            size={24}
-            color="#4630EB"
-          />
+          <TouchableOpacity onPress={() => onSelect(item)}>
+            <MaterialIcons
+              name={isSelected ? "check-box" : "check-box-outline-blank"}
+              size={24}
+              color="#4630EB"
+            />
+          </TouchableOpacity>
           <View className="flex-1">
             <Text
               className="font-pmedium"
@@ -334,7 +336,7 @@ const AddExpenseModal = memo(
 
 const ExpenseTracker = () => {
   const { userdetails } = useGlobalContext();
-  
+
   // Early return if user is not logged in
   if (!userdetails) {
     return (
@@ -364,6 +366,7 @@ const ExpenseTracker = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const selectedItemsRef = useRef([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [selectedExpenses, setSelectedExpenses] = useState([]);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [scannedImage, setScannedImage] = useState(null);
@@ -384,6 +387,7 @@ const ExpenseTracker = () => {
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [filteredTotalAmount, setFilteredTotalAmount] = useState(0);
   const [isCSVUploaderVisible, setCSVUploaderVisible] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
 
   const handleImageSelected = useCallback((asset) => {
     // Store the complete asset information for proper upload
@@ -440,9 +444,25 @@ const ExpenseTracker = () => {
     return "Total Filtered Expenses";
   }, [hasActiveFilters, activeFilters]);
 
+  const handleViewDetail = useCallback((expense) => {
+    // Navigate to details page with expense data
+    router.push({
+      pathname: '/(tabs)/(tracker)/details',
+      params: {
+        expenseId: expense.id,
+        description: expense.description,
+        amount: expense.amount,
+        categoryName: expense.categories?.category_name || 'Unknown',
+        categoryColor: expense.categories?.color || '#4630EB',
+        createdAt: expense.created_at,
+        receiptImage: expense.receipt_image || null
+      }
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!userdetails?.id) return;
-    
+
     try {
       setIsLoading(true);
       const [categoriesResponse, expensesResponse] = await Promise.all([
@@ -451,6 +471,8 @@ const ExpenseTracker = () => {
       ]);
       setCategories(categoriesResponse);
       setExpenses(expensesResponse);
+      // Clear search results when data is fetched, but keep search text
+      setSearchResults([]);
     } catch (error) {
       showAlert("Error", `Error fetching data! - ${error}`, "error");
     } finally {
@@ -460,7 +482,7 @@ const ExpenseTracker = () => {
 
   const onRefresh = useCallback(async () => {
     if (!userdetails?.id) return;
-    
+
     setRefreshing(true);
     try {
       const [categoriesResponse, expensesResponse] = await Promise.all([
@@ -469,6 +491,8 @@ const ExpenseTracker = () => {
       ]);
       setCategories(categoriesResponse);
       setExpenses(expensesResponse);
+      // Clear search results when data is refreshed, but keep search text
+      setSearchResults([]);
     } finally {
       setRefreshing(false);
     }
@@ -564,7 +588,7 @@ const ExpenseTracker = () => {
 
   const addCategory = useCallback(async () => {
     if (!userdetails?.id) return;
-    
+
     if (!newCategory.name.trim()) {
       showAlert("Validation Error", "Category name cannot be empty.", "error");
       return;
@@ -584,7 +608,7 @@ const ExpenseTracker = () => {
 
   const addExpense = useCallback(async () => {
     if (!userdetails?.id) return;
-    
+
     // Validate required fields
     if (
       !newExpense.amount ||
@@ -714,6 +738,16 @@ const ExpenseTracker = () => {
   const handleLongPress = useCallback((item) => {
     setSelectedItem(item);
     setExpenseActionModalVisible(true);
+  }, []);
+
+  const handleSelectExpense = useCallback((item) => {
+    setSelectedExpenses(prev => {
+      if (prev.includes(item.id)) {
+        return prev.filter(id => id !== item.id);
+      } else {
+        return [...prev, item.id];
+      }
+    });
   }, []);
 
   const handleDeletePress = useCallback((item) => {
@@ -913,7 +947,7 @@ const ExpenseTracker = () => {
 
   const handleCSVUploadComplete = async (processedExpenses) => {
     if (!userdetails?.id) return;
-    
+
     setIsLoading(true);
     try {
       // If processedExpenses is empty, it means CSVUploader already handled the import
@@ -1019,6 +1053,15 @@ const ExpenseTracker = () => {
   const renderHeader = useCallback(
     () => (
       <>
+       {/* Inline ExpenseSearch */}
+       <View className="mb-4">
+          <ExpenseSearch
+            onClose={() => {}} // No close needed for inline
+            categories={categories}
+            expenses={expenses}
+            onSearchResults={setSearchResults}
+          />
+        </View>
         <HeaderButtons
           onAddExpense={() => setExpenseModalVisible(true)}
           onAddCategory={() => setCategoryModalVisible(true)}
@@ -1053,12 +1096,12 @@ const ExpenseTracker = () => {
         <View className="flex-row items-center justify-between mb-2">
           <View className="flex-row items-center">
             <Text className="text-xl text-cyan-100 font-plight">
-              {hasActiveFilters ? 'Filtered Expenses' : 'Recent Expenses'}
+              {searchResults.length > 0 ? 'Search Results' : hasActiveFilters ? 'Filtered Expenses' : 'Recent Expenses'}
             </Text>
-            {hasActiveFilters && (
+            {(hasActiveFilters || searchResults.length > 0) && (
               <View className="ml-2 bg-purple-500 px-2 py-1 rounded-full">
                 <Text className="text-white text-xs font-pmedium">
-                  {filteredExpenses.length}
+                  {searchResults.length > 0 ? searchResults.length : filteredExpenses.length}
                 </Text>
               </View>
             )}
@@ -1100,25 +1143,23 @@ const ExpenseTracker = () => {
         )}
       </>
     ),
-    [categories, categoryTotals, expenses.length, selectAll, toggleSelectAll, hasActiveFilters, filteredExpenses.length, filteredTotalAmount, getDateRangeText]
+    [categories, categoryTotals, expenses.length, selectAll, toggleSelectAll, hasActiveFilters, filteredExpenses.length, filteredTotalAmount, getDateRangeText, searchQuery]
   );
 
-  // Memoized Search Input Component
-  const SearchInput = memo(({ value, onChange }) => (
-    <TextInput
-      placeholder="Filter expenses by month..."
-      value={value}
-      onChangeText={onChange}
-      style={{ padding: 10, borderWidth: 1, margin: 10 }}
-    />
-  ));
-
-  const handleSearchChange = useCallback((text) => {
-    setSearchQuery(text);
-  }, []);
 
   const displayExpenses = useMemo(() => {
+    // If we have search results, show them
+    if (searchResults.length > 0) {
+      return [...searchResults].sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        return dateB - dateA; // Most recent first
+      });
+    }
+
+    // Otherwise show filtered or regular expenses
     const expensesToShow = hasActiveFilters ? filteredExpenses : expenses;
+
     const sortedExpenses = [...expensesToShow].sort((a, b) => {
       // Use created_at from Supabase
       const dateA = new Date(a.created_at);
@@ -1126,9 +1167,9 @@ const ExpenseTracker = () => {
       return dateB - dateA; // Most recent first
     });
 
-    // Only limit to 10 when no filters are active
+    // Show all results when filtering, limit to 10 when no filters are active
     return hasActiveFilters ? sortedExpenses : sortedExpenses.slice(0, 10);
-  }, [expenses, filteredExpenses, hasActiveFilters]);
+  }, [expenses, filteredExpenses, hasActiveFilters, searchResults]);
 
   if (isLoading) {
     return (
@@ -1155,21 +1196,22 @@ const ExpenseTracker = () => {
 
       <FlatList
         data={displayExpenses}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <ExpenseItem
             item={item}
-            onLongPress={handleLongPress}
-            isSelected={selectedItems.includes(item.id)}
-            onSelect={handleSelectItem}
             onDelete={handleDeletePress}
             onViewReceipt={handleViewReceipt}
+            onViewDetail={handleViewDetail}
+            onLongPress={handleLongPress}
+            isSelected={selectedExpenses.includes(item.id)}
+            onSelect={handleSelectExpense}
           />
         )}
         ListHeaderComponent={renderHeader}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        keyExtractor={(item) => item?.id}
       />
 
       <AddExpenseModal
@@ -1307,6 +1349,8 @@ const ExpenseTracker = () => {
         categories={categories}
         userId={userdetails?.id}
       />
+
+
     </View>
   );
 };

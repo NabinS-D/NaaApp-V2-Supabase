@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import "../global.css";
 import GlobalProvider from "../context/GlobalProvider";
 import { AlertProvider } from "../context/AlertProvider";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 const RootLayout = () => {
   const [fontsLoaded, error] = useFonts({
@@ -90,52 +91,54 @@ const RootLayout = () => {
   }, []);
 
   return (
-    <AlertProvider>
-      <GlobalProvider>
-        <StatusBar style="light" backgroundColor="#7C1F4E" />
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: "#7C1F4E",
-            },
-            headerTintColor: "#fff",
-            headerTitleStyle: {
-              fontWeight: "bold",
-              fontFamily: "Poppins-Bold",
-              fontSize: 20,
-            },
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen
-            name="(auth)"
-            options={{
+    <ErrorBoundary>
+      <AlertProvider>
+        <GlobalProvider>
+          <StatusBar style="light" backgroundColor="#7C1F4E" />
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: "#7C1F4E",
+              },
+              headerTintColor: "#fff",
+              headerTitleStyle: {
+                fontWeight: "bold",
+                fontFamily: "Poppins-Bold",
+                fontSize: 20,
+              },
               headerShown: false,
             }}
-          />
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
-              presentation: "containedModal",
-            }}
-          />
-          <Stack.Screen
-            name="reset-password"
-            options={{
-              headerShown: false,
-              presentation: "modal",
-            }}
-          />
-        </Stack>
-      </GlobalProvider>
-    </AlertProvider>
+          >
+            <Stack.Screen
+              name="(auth)"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="index"
+              options={{
+                headerShown: false,
+                presentation: "containedModal",
+              }}
+            />
+            <Stack.Screen
+              name="reset-password"
+              options={{
+                headerShown: false,
+                presentation: "modal",
+              }}
+            />
+          </Stack>
+        </GlobalProvider>
+      </AlertProvider>
+    </ErrorBoundary>
   );
 };
 

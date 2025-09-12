@@ -1,181 +1,126 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  FlatList, 
   StyleSheet,
-  SafeAreaView,
-  ActivityIndicator,
+  SafeAreaView, 
+  ActivityIndicator, 
   TouchableOpacity,
-} from "react-native";
-import { database } from "../../lib/firebaseconfig";
-import {
-  onValue,
-  ref,
-  push,
-  query,
-  orderByChild,
-  limitToLast,
-} from "firebase/database";
-import { useGlobalContext } from "../../context/GlobalProvider";
-import useAlertContext from "../../context/AlertProvider";
-import { Ionicons } from "@expo/vector-icons";
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard
+} from 'react-native';
+import { useGlobalContext } from '../../context/GlobalProvider';
+import { Ionicons } from '@expo/vector-icons';
+import { sendMessage, getMessages, subscribeToMessages } from '../../lib/APIs/ChatApiSupabase';
 
 export default function GroupChat() {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const { userdetails, user } = useGlobalContext();
-  const [username, setUsername] = useState(userdetails?.username || user?.email?.split('@')[0] || "Anonymous");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const { userdetails } = useGlobalContext();
   const flatListRef = useRef(null);
-  const [pageSize] = useState(20);
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Memoized date formatter
   const formatDate = useCallback((timestamp) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: true,
     });
   }, []);
 
-  // Setup username only once
-  useEffect(() => {
-    const setupUsername = async () => {
-      try {
-        if (userdetails?.username) {
-          setUsername(userdetails.username);
-        } else {
-          const savedUsername = await AsyncStorage.getItem("username");
-          if (savedUsername) {
-            setUsername(savedUsername);
-          } else {
-            const newUsername = `User${Math.floor(Math.random() * 1000)}`;
-            await AsyncStorage.setItem("username", newUsername);
-            setUsername(newUsername);
-          }
-        }
-      } catch (error) {
-        console.error("Error with username:", error);
-      }
-    };
+  const loadMessages = async (pageNum = 1) => {
+    if (loadingMore || (pageNum > 1 && !hasMore)) return;
 
-    setupUsername();
-  }, [userdetails]);
-
-  // Load messages with proper loading state management
-  useEffect(() => {
-    // Only show loading indicator for initial load
-    if (currentPage === 1) {
-      setInitialLoading(true);
+    if (pageNum === 1) {
+      setIsLoading(true);
     } else {
       setLoadingMore(true);
     }
 
-    const messagesRef = query(
-      ref(database, "messages"),
-      orderByChild("timestamp"),
-      limitToLast(pageSize * currentPage)
-    );
-
-    const unsubscribe = onValue(
-      messagesRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const messageList = Object.entries(data).map(([id, msg]) => ({
-            id,
-            ...msg,
-          }));
-
-          // Sort messages by timestamp (newest first)
-          const sortedMessages = messageList.sort(
-            (a, b) => b.timestamp - a.timestamp
-          );
-          setMessages(sortedMessages);
-        } else {
-          setMessages([]);
-        }
-
-        // Clear loading states
-        setInitialLoading(false);
-        setLoadingMore(false);
-      },
-      (error) => {
-        console.error("Error loading messages:", error);
-        setInitialLoading(false);
-        setLoadingMore(false);
+    try {
+      const newMessages = await getMessages(pageNum, 20);
+      if (newMessages.length < 20) {
+        setHasMore(false);
       }
-    );
+      
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
+        return pageNum === 1 ? newMessages : [...prev, ...uniqueNewMessages];
+      });
 
-    // Cleanup function
-    return () => unsubscribe();
-  }, [currentPage, pageSize, userdetails]);
-
-  // Send message with improved notifications
-  const sendMessage = async () => {
-    if (newMessage.trim()) {
-      try {
-        // First save to Firebase
-        const messagesRef = ref(database, "messages");
-        const messageData = {
-          text: newMessage,
-          username: username,
-          timestamp: Date.now(),
-          userId: user?.id || "anonymous", // Use account ID consistently
-        };
-
-        await push(messagesRef, messageData);
-
-        // Send OneSignal notification to all users except sender (use user account ID which matches OneSignal external ID)
-        await sendChatNotification(newMessage, userdetails?.username || user?.email?.split('@')[0] || "Anonymous", user?.id || "anonymous");
-
-        setNewMessage("");
-      } catch (error) {
-        console.error("Error sending message:", error);
-      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setIsLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  // Improved notification function using OneSignal directly
+  useEffect(() => {
+    loadMessages();
+    
+    // Subscribe to new messages
+    const subscription = subscribeToMessages((newMessage) => {
+      setMessages(prevMessages => {
+        // Check if message already exists to prevent duplicates
+        const messageExists = prevMessages.some(msg => msg.id === newMessage.id);
+        if (messageExists) return prevMessages;
+        
+        return [newMessage, ...prevMessages];
+      });
+    });
+
+    // Keyboard listeners
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      if (subscription && subscription.unsubscribe) {
+        subscription.unsubscribe();
+      }
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, []);
+
   const sendChatNotification = async (message, senderUsername, senderUserId) => {
     try {
-
       const notificationData = {
         app_id: process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID,
-        included_segments: ["All"], // Send to all users
-        excluded_external_user_ids: [senderUserId], // Exclude sender
-        headings: {
-          en: "New Message"
-        },
-        contents: {
-          en: `${senderUsername}: ${message.length > 50 ? message.substring(0, 50) + "..." : message}`
-        },
-        data: {
-          type: "chat_message",
-          sender: senderUsername,
-          senderId: senderUserId,
-          message: message
-        },
-        android_channel_id: `${process.env.EXPO_PUBLIC_ONESIGNAL_CHANNEL_ID}`,
-        priority: 10
+        included_segments: ["All"],
+        excluded_external_user_ids: [senderUserId],
+        headings: { en: "New Message" },
+        contents: { en: `${senderUsername}: ${message.substring(0, 50)}` },
+        data: { type: "chat_message" },
+        android_channel_id: process.env.EXPO_PUBLIC_ONESIGNAL_CHANNEL_ID,
       };
 
       const response = await fetch("https://onesignal.com/api/v1/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `key ${process.env.EXPO_PUBLIC_ONESIGNAL_REST_API_KEY}`
+          "Authorization": `Basic ${process.env.EXPO_PUBLIC_ONESIGNAL_REST_API_KEY}`,
         },
-        body: JSON.stringify(notificationData)
+        body: JSON.stringify(notificationData),
       });
 
       if (!response.ok) {
@@ -186,86 +131,121 @@ export default function GroupChat() {
     }
   };
 
-  const loadMoreMessages = () => {
-    if (!loadingMore && !initialLoading) {
-      setCurrentPage((prevPage) => prevPage + 1);
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || isSending) return;
+
+    const messageContent = newMessage.trim();
+    setIsSending(true);
+    
+    // Optimistically add message to UI immediately
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      content: messageContent,
+      sender_id: userdetails.id,
+      sender: { username: userdetails.username },
+      created_at: new Date().toISOString(),
+      isTemporary: true
+    };
+    
+    setMessages(prev => [tempMessage, ...prev]);
+    setNewMessage('');
+
+    try {
+      const sentMessage = await sendMessage(userdetails.id, messageContent);
+      
+      // Replace temporary message with actual message
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempMessage.id ? { ...sentMessage, sender: { username: userdetails.username } } : msg
+      ));
+      
+      // Send notification after message is sent
+      await sendChatNotification(messageContent, userdetails.username, userdetails.id);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Remove temporary message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      // Restore message text on error
+      setNewMessage(messageContent);
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const renderMessage = ({ item }) => {
-    const isMyMessage =
-      item.username === username || item.userId === userdetails?.id;
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadMessages(nextPage);
+  };
 
+  const renderMessage = ({ item }) => {
+    const isMyMessage = item.sender_id === userdetails?.id;
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isMyMessage ? styles.myMessage : styles.otherMessage,
-        ]}
-      >
-        <Text style={styles.username}>{item.username}</Text>
-        <Text style={styles.messageText}>{item.text}</Text>
-        <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
+      <View style={[styles.messageContainer, isMyMessage ? styles.myMessage : styles.otherMessage]}>
+        {!isMyMessage && <Text style={styles.username}>{item.sender?.username || 'User'}</Text>}
+        <Text style={styles.messageText}>{item.content}</Text>
+        <Text style={styles.timestamp}>{formatDate(item.created_at)}</Text>
       </View>
     );
   };
 
-  const renderFooter = () => {
-    if (initialLoading) {
-      return (
-        <SafeAreaView style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5C94C8" />
-          <Text style={styles.loadingText}>Loading messages...</Text>
-        </SafeAreaView>
-      );
-    }
-    return null;
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#5C94C8" />
+        <Text style={styles.loadingText}>Loading Chat...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View className="py-4 px-4 bg-pink-700 rounded-lg mx-4 mt-14 mb-2">
-        <Text className="text-2xl text-cyan-100 font-pbold text-center">
-          Chat Room
-        </Text>
-      </View>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={isKeyboardVisible ? (Platform.OS === 'ios' ? 90 : 40) : 0}
+      >
+        <View className="py-4 px-4 bg-pink-700 rounded-lg mx-4 mb-2" style={{ marginTop: 60 }}>
+          <Text className="text-2xl text-cyan-100 font-pbold text-center">Global Chat</Text>
+        </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        inverted
-        style={styles.messageList}
-        onEndReached={loadMoreMessages}
-        onEndReachedThreshold={0.3}
-        ListFooterComponent={renderFooter}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-      />
-
-      <View className="flex-row p-3 bg-[#7C1F4E] items-center justify-center">
-        <TextInput
-          className="flex-1 mr-3 mt-2 p-3 bg-gray-100 rounded-xl h-12 text-black text-base"
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message..."
-          placeholderTextColor="#666"
-          multiline
-          maxLength={500}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          inverted
+          style={styles.messageList}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore && <ActivityIndicator size="small" color="#FFF" />}
         />
-        <TouchableOpacity
-          onPress={sendMessage}
-          disabled={!newMessage.trim()}
-          style={[
-            styles.sendButton,
-            !newMessage.trim() && styles.disabledButton,
-          ]}
-        >
-          <Ionicons name="send" size={22} color="white" />
-        </TouchableOpacity>
-      </View>
+
+        <View className="flex-row p-3 bg-[#7C1F4E] items-end" style={{ paddingBottom: 5 }}>
+          <TextInput
+            className="flex-1 mr-3 p-3 bg-gray-100 rounded-xl text-black text-base"
+            style={{ 
+              minHeight: 44,
+              maxHeight: 120,
+              textAlignVertical: 'top'
+            }}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message..."
+            placeholderTextColor="#666"
+            multiline={true}
+            textAlignVertical="center"
+          />
+          <TouchableOpacity
+            onPress={handleSendMessage}
+            disabled={!newMessage.trim() || isSending}
+            style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.disabledButton]}
+          >
+            {isSending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={22} color="white" />}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -303,6 +283,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
+    lineHeight: 22,
+    flexWrap: 'wrap',
   },
   timestamp: {
     fontSize: 10,
@@ -332,7 +314,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginBottom: 2,
   },
   disabledButton: {
     backgroundColor: "#A0A0A0",

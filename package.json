@@ -65,7 +65,6 @@
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.8",
     "expo-updates": "~0.27.2",
-    "firebase": "^11.3.1",
     "nativewind": "^4.1.23",
     "onesignal-expo-plugin": "^2.0.3",
     "papaparse": "^5.5.3",
