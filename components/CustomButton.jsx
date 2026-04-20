@@ -33,7 +33,6 @@ const CustomButton = ({
           <Text
             className={`text-primary font-psemibold text-lg ${textStyles}`}
             numberOfLines={1}
-            adjustsFontSizeToFit={true}
           >
             {title}
           </Text>

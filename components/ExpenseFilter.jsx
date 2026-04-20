@@ -314,18 +314,18 @@ const ExpenseFilter = memo(({
                                 <CustomButton
                                     title="Clear All"
                                     handlePress={handleClearFilters}
-                                    containerStyles="py-4 px-6 rounded-xl w-full"
+                                    containerStyles="py-3 px-4 rounded-xl w-full min-h-[52px]"
                                     buttoncolor="bg-gray-600"
-                                    textStyles="text-white font-psemibold text-base text-center"
+                                    textStyles="text-white font-psemibold text-lg text-center"
                                 />
                             </View>
                             <View className="flex-1">
                                 <CustomButton
                                     title="Apply Filters"
                                     handlePress={handleApplyFilters}
-                                    containerStyles="py-4 px-6 rounded-xl w-full"
+                                    containerStyles="py-3 px-4 rounded-xl w-full min-h-[52px]"
                                     buttoncolor="bg-blue-600"
-                                    textStyles="text-white font-psemibold text-base text-center"
+                                    textStyles="text-white font-psemibold text-lg text-center"
                                 />
                             </View>
                         </View>

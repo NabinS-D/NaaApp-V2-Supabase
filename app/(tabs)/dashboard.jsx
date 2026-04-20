@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -70,11 +71,10 @@ export default function Dashboard() {
     let filtered = [...expenses];
 
     if (filterMode === "month") {
-      const currentYear = new Date().getFullYear();
       return filtered.filter(expense => {
         const expenseDate = new Date(expense.created_at);
         return expenseDate.getMonth() === selectedMonth &&
-          expenseDate.getFullYear() === currentYear;
+          expenseDate.getFullYear() === selectedYear;
       });
     } else {
       if (startDate) {
@@ -97,7 +97,7 @@ export default function Dashboard() {
 
       return filtered;
     }
-  }, [expenses, filterMode, selectedMonth, startDate, endDate]);
+  }, [expenses, filterMode, selectedMonth, selectedYear, startDate, endDate]);
 
   // Calculate category totals and total expenses for the filtered data
   const { categoryTotals, totalExpenses } = useMemo(() => {
@@ -253,6 +253,10 @@ export default function Dashboard() {
     return Math.max(minWidth, calculatedWidth);
   }, [barChartData.length]);
 
+  // Generate year options (last 5 years + current year)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i);
+
   // Month options for the dropdown
   const months = [
     { label: "January", value: 0 },
@@ -325,7 +329,7 @@ export default function Dashboard() {
             >
               Total Expenses for{" "}
               {filterMode === "month"
-                ? months[selectedMonth].label
+                ? `${months[selectedMonth].label} ${selectedYear}`
                 : "the selected range"}
             </Text>
             <Text style={styles.totalCardAmount}>
@@ -361,19 +365,44 @@ export default function Dashboard() {
 
             {/* Conditionally render month picker or date range picker */}
             {filterMode === "month" ? (
-              <Picker
-                selectedValue={selectedMonth}
-                onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-              >
-                {months.map((month) => (
-                  <Picker.Item
-                    key={month.value}
-                    label={month.label}
-                    value={month.value}
-                    style={styles.formatPicker}
-                  />
-                ))}
-              </Picker>
+              <View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-gray-600 font-pmedium">Month:</Text>
+                  <Text className="text-gray-600 font-pmedium">Year:</Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Picker
+                      selectedValue={selectedMonth}
+                      onValueChange={(itemValue) => setSelectedMonth(itemValue)}
+                    >
+                      {months.map((month) => (
+                        <Picker.Item
+                          key={month.value}
+                          label={month.label}
+                          value={month.value}
+                          style={styles.formatPicker}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <Picker
+                      selectedValue={selectedYear}
+                      onValueChange={(itemValue) => setSelectedYear(itemValue)}
+                    >
+                      {years.map((year) => (
+                        <Picker.Item
+                          key={year}
+                          label={year.toString()}
+                          value={year}
+                          style={styles.formatPicker}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+              </View>
             ) : (
               <View className="flex-row items-center justify-between">
                 <TouchableOpacity

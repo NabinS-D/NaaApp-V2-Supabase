@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NaaApp",
-    "slug": "mynaaapp",
+    "slug": "mynaaapp-v2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/naal.png",
@@ -56,31 +56,12 @@
         "origin": false
       },
       "eas": {
-        "projectId": "768a7dec-4695-461f-8661-d4a81dd09fd2",
-        "build": {
-          "experimental": {
-            "ios": {
-              "appExtensions": [
-                {
-                  "targetName": "OneSignalNotificationServiceExtension",
-                  "bundleIdentifier": "com.NaaApp.OneSignalNotificationServiceExtension",
-                  "entitlements": {
-                    "com.apple.security.application-groups": [
-                      "group.com.NaaApp.onesignal"
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        }
+        "projectId": "7c19c24e-d837-473e-a6c7-b5a3458902d5"
       }
     },
-    "owner": "officialacc",
     "updates": {
       "enabled": true,
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/768a7dec-4695-461f-8661-d4a81dd09fd2"
+      "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": "1.0.0"
   }
