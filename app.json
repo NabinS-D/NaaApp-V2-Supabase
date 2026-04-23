@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.NaaApp",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "We need access to Face ID to secure your account and allow quick sign-in."
       }
     },
     "android": {
@@ -20,7 +21,11 @@
         "foregroundImage": "./assets/images/naal.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.NaaApp"
+      "package": "com.NaaApp",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "web": {
       "bundler": "metro",

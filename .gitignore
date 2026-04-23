@@ -40,6 +40,7 @@ app-example
 .env.env
 .env
 android/
+ios/
 naaapp/
 OPTIMIZATION_REPORT.md
 # @generated expo-cli sync-8d4afeec25ea8a192358fae2f8e2fc766bdce4ec

@@ -1,5 +1,5 @@
 import { Image, Text, View, TouchableOpacity } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScrollView } from "react-native";
 import { images } from "../../constants";
@@ -11,6 +11,8 @@ import { signIn, sendPasswordResetEmail } from "../../lib/APIs/UserApiSupabase.j
 import { useGlobalContext } from "../../context/GlobalProvider.js";
 import useAlertContext from "../../context/AlertProvider";
 import GoogleAuth from "../../components/GoogleAuth";
+import { BiometricAuth } from "../../lib/biometricAuth";
+import SecureStorage from "../../lib/secureStorage";
 
 const SignIn = () => {
   const { checkAuth } = useGlobalContext();
@@ -24,6 +26,26 @@ const SignIn = () => {
   const [forgotPasswordModalVisible, setForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [biometricModalVisible, setBiometricModalVisible] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState("");
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [isEnablingBiometric, setIsEnablingBiometric] = useState(false);
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const available = await BiometricAuth.isAvailable();
+    setBiometricAvailable(available);
+    if (available) {
+      const type = await BiometricAuth.getBiometricType();
+      setBiometricType(type);
+      const enabled = await BiometricAuth.isEnabled();
+      setBiometricEnabled(enabled);
+    }
+  };
 
   const submit = async ({ email, password }) => {
     if (email === "") {
@@ -40,7 +62,13 @@ const SignIn = () => {
     try {
       await signIn(email, password);
       await checkAuth(); // Wait for context to update
-      router.replace("/(tabs)/dashboard");
+      
+      // Show biometric enable modal if available and not already enabled
+      if (biometricAvailable && !biometricEnabled) {
+        setBiometricModalVisible(true);
+      } else {
+        router.replace("/(tabs)/dashboard");
+      }
     } catch (error) {
       showAlert(
         "SignIn Error",
@@ -77,6 +105,65 @@ const SignIn = () => {
       );
     } finally {
       setIsResettingPassword(false);
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    setIsEnablingBiometric(true);
+    try {
+      const authenticated = await BiometricAuth.authenticate(`Enable ${biometricType} for quick sign-in`);
+      
+      if (authenticated) {
+        await SecureStorage.saveCredentials(form.email, form.password);
+        await BiometricAuth.enable();
+        setBiometricEnabled(true);
+        showAlert(
+          "Biometric Enabled",
+          `${biometricType} has been enabled for quick sign-in`,
+          "success"
+        );
+        setBiometricModalVisible(false);
+        router.replace("/(tabs)/dashboard");
+      }
+    } catch (error) {
+      showAlert(
+        "Biometric Error",
+        `Failed to enable biometric: ${error.message}`,
+        "error"
+      );
+    } finally {
+      setIsEnablingBiometric(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    const authenticated = await BiometricAuth.authenticate(`Sign in with ${biometricType}`);
+    
+    if (authenticated) {
+      const credentials = await SecureStorage.getCredentials();
+      
+      if (credentials) {
+        setisSubmitting(true);
+        try {
+          await signIn(credentials.email, credentials.password);
+          await checkAuth();
+          router.replace("/(tabs)/dashboard");
+        } catch (error) {
+          showAlert(
+            "Biometric Login Error",
+            `Failed to sign in: ${error.message}`,
+            "error"
+          );
+        } finally {
+          setisSubmitting(false);
+        }
+      } else {
+        showAlert(
+          "Error",
+          "No saved credentials found. Please sign in with email and password first.",
+          "error"
+        );
+      }
     }
   };
 
@@ -122,6 +209,20 @@ const SignIn = () => {
             isLoading={isSubmitting}
             fullWidth={true}
           />
+
+          {biometricAvailable && biometricEnabled && (
+            <TouchableOpacity
+              onPress={handleBiometricLogin}
+              className="mb-6 items-center"
+              disabled={isSubmitting}
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-white font-psemibold text-base">
+                  Sign in with {biometricType}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             onPress={() => {
@@ -209,6 +310,40 @@ const SignIn = () => {
                 keyboardType="email-address"
                 otherStyles="mb-4"
               />
+            </View>
+          </CustomModal>
+        </View>
+      )}
+
+      {/* Biometric Enable Modal */}
+      {biometricModalVisible && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <CustomModal
+            title={`Enable ${biometricType}`}
+            modalVisible={biometricModalVisible}
+            onSecondaryPress={() => {
+              setBiometricModalVisible(false);
+              router.replace("/(tabs)/dashboard");
+            }}
+            onPrimaryPress={handleEnableBiometric}
+            primaryButtonText="Enable"
+            secondaryButtonText="Skip"
+            isLoading={isEnablingBiometric}
+          >
+            <View className="w-full">
+              <Text className="text-gray-600 text-sm mb-4 text-center">
+                Enable {biometricType} for quick and secure sign-in. Your credentials will be stored securely on your device.
+              </Text>
             </View>
           </CustomModal>
         </View>
