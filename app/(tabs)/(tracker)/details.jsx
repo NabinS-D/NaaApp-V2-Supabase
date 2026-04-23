@@ -1,7 +1,7 @@
-import { ActivityIndicator, Text, View, TouchableOpacity, Image } from "react-native";
+import { ActivityIndicator, Text, View, Image } from "react-native";
 import React, { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ScrollView, RefreshControl } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { expensesOfCategory } from "../../../lib/APIs/ExpenseApiSupabase";

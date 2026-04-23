@@ -8,6 +8,7 @@ import "../global.css";
 import GlobalProvider from "../context/GlobalProvider";
 import { AlertProvider } from "../context/AlertProvider";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { supabase } from "../lib/supabase.js";
 
 const RootLayout = () => {
   const [fontsLoaded, error] = useFonts({
@@ -31,58 +32,48 @@ const RootLayout = () => {
 
   // Deep link handler for password reset
   useEffect(() => {
-    const handleUrl = async (event) => {
-      const { url } = event;
-      console.log('Deep link received:', url);
+    const handleUrl = async (url) => {
+      if (!url) return;
+
       try {
         const parsed = new URL(url);
-        console.log('Parsed URL - pathname:', parsed.pathname, 'search:', parsed.search, 'hash:', parsed.hash);
-        console.log('Full parsed object:', { pathname: parsed.pathname, search: parsed.search, hash: parsed.hash, host: parsed.host });
+        const searchParams = parsed.searchParams;
+        const hashParams = new URLSearchParams(parsed.hash.substring(1));
 
-        // Handle custom scheme URLs - check both pathname and host
-        if (parsed.pathname === '/reset-password' || parsed.host === 'reset-password') {
-          // Parse both query parameters and hash fragments
-          const searchParams = parsed.searchParams;
-          const hashParams = new URLSearchParams(parsed.hash.substring(1)); // Remove the # symbol
-          
-          // Check for errors first (in both locations)
-          const error = searchParams.get('error') || hashParams.get('error');
-          const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
-          
-          if (error) {
-            console.log('Deep link error:', error, errorDescription);
-            // Navigate to reset-password with error parameters so it can show the error modal
-            router.push(`/reset-password?error=${error}&error_description=${errorDescription}`);
-            return;
-          }
+        // Check for error first
+        const error = searchParams.get('error') || hashParams.get('error');
+        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
 
-          // Check for tokens in both locations
-          const token = searchParams.get('access_token') || hashParams.get('access_token') || 
-                       searchParams.get('token') || hashParams.get('token') ||
-                       searchParams.get('refresh_token') || hashParams.get('refresh_token');
-          console.log('Token found:', token ? 'Yes' : 'No');
-          console.log('Token value (first 50 chars):', token ? token.substring(0, 50) + '...' : 'None');
-
-          if (token) {
-            console.log('Navigating to reset-password with token...');
-            // Navigate to the reset-password route with the token
-            router.push(`/reset-password?token=${token}`);
-            console.log('Navigation command sent');
-          } else {
-            console.log('No token found, not navigating');
-          }
+        if (error) {
+          router.push(`/reset-password?error=${error}&error_description=${errorDescription}`);
+          return;
         }
-      } catch (error) {
-        console.error('Error parsing deep link:', error);
+
+        // Check for token (for password reset)
+        const accessToken = searchParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+
+        if (accessToken) {
+          const params = new URLSearchParams();
+          params.append('access_token', accessToken);
+          if (refreshToken) {
+            params.append('refresh_token', refreshToken);
+          }
+          router.push(`/reset-password?${params.toString()}`);
+        }
+      } catch (err) {
+        console.error('Error handling deep link:', err);
       }
     };
 
     // Subscribe to future links
-    const subscription = Linking.addEventListener('url', handleUrl);
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleUrl(event.url);
+    });
 
     // Handle the case where the app was launched from a link
     Linking.getInitialURL().then((initialUrl) => {
-      if (initialUrl) handleUrl({ url: initialUrl });
+      if (initialUrl) handleUrl(initialUrl);
     });
 
     return () => {

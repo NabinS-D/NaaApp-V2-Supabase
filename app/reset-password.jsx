@@ -1,178 +1,129 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
-import { updatePasswordWithToken } from '../lib/APIs/UserApiSupabase';
-import CustomModal from '../components/CustomModal';
-import FormFields from '../components/FormFields';
-import { supabase } from '../lib/supabase';
-import useAlertContext from '../context/AlertProvider';
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { useLocalSearchParams, router } from "expo-router";
+import { updatePasswordWithToken } from "../lib/APIs/UserApiSupabase.js";
+import useAlertContext from "../context/AlertProvider";
+import FormFields from "../components/FormFields";
+import CustomButton from "../components/CustomButton";
 
 export default function ResetPassword() {
-    const params = useLocalSearchParams();
-    const { token, error, error_description } = params;
-    const { showAlert } = useAlertContext();
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [isResettingPassword, setIsResettingPassword] = useState(false);
-    const [tokenError, setTokenError] = useState(null);
-    const [modalVisible, setModalVisible] = useState(true);
+  const params = useLocalSearchParams();
+  const { access_token, refresh_token, error, error_description } = params;
+  const { showAlert } = useAlertContext();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [tokenError, setTokenError] = useState(null);
 
-    useEffect(() => {
-        // Check if there's an error from the deep link first
-        if (error) {
-            const errorMsg = error_description ? decodeURIComponent(error_description) : 'Reset link error';
-            setTokenError(errorMsg);
-            return;
-        }
-
-        // If no token, redirect back to signin
-        if (!token) {
-            router.replace('/(auth)/signin');
-            return;
-        }
-
-        // Validate the token silently when component mounts
-        validateToken();
-    }, [token, error, error_description]);
-
-    const validateToken = async () => {
-        try {
-            // Try to verify the OTP token silently
-            const { data, error } = await supabase.auth.verifyOtp({
-                token_hash: token,
-                type: 'recovery'
-            });
-
-            if (error) {
-                console.log('Token validation error:', error);
-                if (error.message.includes('expired') || error.message.includes('invalid')) {
-                    setTokenError('This password reset link has expired or is invalid. Please request a new one.');
-                } else {
-                    setTokenError(`Token validation failed: ${error.message}`);
-                }
-            } else {
-                console.log('Token validated successfully');
-                setTokenError(null);
-            }
-        } catch (error) {
-            console.log('Token validation exception:', error);
-            setTokenError('Unable to validate reset link. Please try again.');
-        }
-    };
-
-    const handlePasswordReset = async () => {
-        if (!newPassword.trim()) {
-            showAlert('Error', 'Password cannot be empty', 'error');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            showAlert('Error', 'Passwords do not match', 'error');
-            return;
-        }
-        if (newPassword.length < 6) {
-            showAlert('Error', 'Password must be at least 6 characters', 'error');
-            return;
-        }
-
-        setIsResettingPassword(true);
-        try {
-            await updatePasswordWithToken(token, newPassword);
-            showAlert('Success', 'Your password has been reset successfully!', 'success');
-            setTimeout(() => {
-                router.replace('/(auth)/signin');
-            }, 2000);
-        } catch (error) {
-            console.log("Reset error", error)
-            showAlert('Error', `Failed to reset password: ${error.message}`, 'error');
-        } finally {
-            setIsResettingPassword(false);
-        }
-    };
-
-    const handleCancel = () => {
-        setModalVisible(false);
-    };
-
-    const handleBackToSignin = () => {
-        router.replace('/(auth)/signin');
-    };
-
-    // Show error state if token is invalid/expired
-    if (tokenError) {
-        return (
-            <SafeAreaView className="bg-[#7C1F4E] h-full">
-                <View style={{
-                    flex: 1,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                }}>
-                    <CustomModal
-                        title="Reset Link Invalid"
-                        modalVisible={modalVisible}
-                        onPrimaryPress={handleBackToSignin}
-                        primaryButtonText="Back to Sign In"
-                    >
-                        <View className="w-full">
-                            <Text className="text-red-600 text-sm mb-4 text-center">
-                                {tokenError}
-                            </Text>
-                            <Text className="text-gray-600 text-xs text-center">
-                                Please go back to the sign-in page and request a new password reset link.
-                            </Text>
-                        </View>
-                    </CustomModal>
-                </View>
-            </SafeAreaView>
-        );
+  useEffect(() => {
+    // Check if there's an error from the deep link first
+    if (error) {
+      const errorMsg = error_description ? decodeURIComponent(error_description) : 'Reset link error';
+      setTokenError(errorMsg);
+      return;
     }
 
-    // Show password reset form if token is valid
-    return (
-        <SafeAreaView className="bg-[#7C1F4E] h-full">
-            <View style={{
-                flex: 1,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-                <CustomModal
-                    title="Reset Your Password"
-                    modalVisible={modalVisible}
-                    onSecondaryPress={handleCancel}
-                    onPrimaryPress={handlePasswordReset}
-                    primaryButtonText="Reset Password"
-                    secondaryButtonText="Cancel"
-                    isLoading={isResettingPassword}
-                >
-                    <View className="w-full">
-                        <Text className="text-gray-600 text-sm mb-4 text-center">
-                            Enter your new password below.
-                        </Text>
-                        <FormFields
-                            placeholder="New password"
-                            value={newPassword}
-                            inputfieldcolor="bg-gray-200"
-                            textcolor="text-gray-800"
-                            bordercolor="border-gray-400"
-                            handleChangeText={setNewPassword}
-                            secureTextEntry={true}
-                            otherStyles="mb-4"
-                        />
-                        <FormFields
-                            placeholder="Confirm new password"
-                            value={confirmPassword}
-                            inputfieldcolor="bg-gray-200"
-                            textcolor="text-gray-800"
-                            bordercolor="border-gray-400"
-                            handleChangeText={setConfirmPassword}
-                            secureTextEntry={true}
-                            otherStyles="mb-4"
-                        />
-                    </View>
-                </CustomModal>
+    // If no access_token, redirect back to signin
+    if (!access_token) {
+      router.replace('/(auth)/signin');
+      return;
+    }
+  }, [access_token, refresh_token, error, error_description]);
+
+  const handlePasswordReset = async () => {
+    if (!newPassword.trim()) {
+      showAlert('Error', 'Password cannot be empty', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showAlert('Error', 'Passwords do not match', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showAlert('Error', 'Password must be at least 6 characters', 'error');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      await updatePasswordWithToken(access_token, newPassword, refresh_token);
+      showAlert('Success', 'Your password has been reset successfully!', 'success');
+      setTimeout(() => {
+        router.replace('/(auth)/signin');
+      }, 2000);
+    } catch (error) {
+      showAlert('Error', `Failed to reset password: ${error.message}`, 'error');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  return (
+    <ScrollView className="bg-primary h-full">
+      <View className="w-full justify-center min-h-[85vh] px-4 my-6">
+        <Text className="text-2xl text-white font-psemibold text-center mb-2">
+          Reset Password
+        </Text>
+        <Text className="text-gray-100 font-pregular text-center mb-8">
+          Enter your new password below
+        </Text>
+
+        {tokenError && (
+          <View className="bg-red-500/20 border border-red-500 rounded-xl p-4 mb-6">
+            <Text className="text-red-500 font-psemibold text-center">
+              {tokenError}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.replace('/(auth)/signin')}
+              className="mt-4"
+            >
+              <Text className="text-white font-pregular text-center underline">
+                Go back to sign in
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!tokenError && (
+          <>
+            <FormFields
+              title="New Password"
+              value={newPassword}
+              handleChangeText={setNewPassword}
+              otherStyles="mt-7"
+              placeholder="Enter new password"
+              secureTextEntry
+            />
+
+            <FormFields
+              title="Confirm Password"
+              value={confirmPassword}
+              handleChangeText={setConfirmPassword}
+              otherStyles="mt-7"
+              placeholder="Confirm new password"
+              secureTextEntry
+            />
+
+            <CustomButton
+              title="Reset Password"
+              handlePress={handlePasswordReset}
+              containerStyles="mt-7"
+              isLoading={isResettingPassword}
+            />
+
+            <View className="justify-center pt-5 flex-row gap-2">
+              <Text className="text-lg text-gray-100 font-pregular">
+                Remember your password?
+              </Text>
+              <TouchableOpacity onPress={() => router.replace('/(auth)/signin')}>
+                <Text className="text-lg font-psemibold text-secondary">
+                  Sign in
+                </Text>
+              </TouchableOpacity>
             </View>
-        </SafeAreaView>
-    );
+          </>
+        )}
+      </View>
+    </ScrollView>
+  );
 }

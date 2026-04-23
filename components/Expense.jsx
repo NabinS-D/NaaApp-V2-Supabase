@@ -19,7 +19,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import { useGlobalContext } from "../context/GlobalProvider.js";
 import CustomModal from "./CustomModal.jsx";
-import { addExpenses, deleteExpenseById, getReceiptImageUrl, fetchAllExpenses, deleteAllExpensesById } from "../lib/APIs/ExpenseApiSupabase";
+import { addExpenses, deleteExpenseById, getReceiptImageUrl, fetchAllExpenses, deleteAllExpensesById, updateExpense } from "../lib/APIs/ExpenseApiSupabase";
 import { addaCategory, fetchAllCategories } from "../lib/APIs/CategoryApiSupabase.js";
 import CustomButton from "./CustomButton.jsx";
 import FormFields from "./FormFields.jsx";
@@ -232,12 +232,13 @@ const AddExpenseModal = memo(
     setExpense,
     scannedImage,
     handleImageSelected,
+    isEditing,
   }) => (
     <CustomModal
       modalVisible={visible}
       onSecondaryPress={onClose}
-      title="Add Expense"
-      primaryButtonText="Add"
+      title={isEditing ? "Edit Expense" : "Add Expense"}
+      primaryButtonText={isEditing ? "Update" : "Add"}
       secondaryButtonText="Cancel"
       onPrimaryPress={onAdd}
     >
@@ -356,6 +357,8 @@ const ExpenseTracker = () => {
     date: new Date().toISOString().split("T")[0], // Default to today
     receiptImage: null,
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [isExpenseActionModalVisible, setExpenseActionModalVisible] =
     useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -705,6 +708,62 @@ const ExpenseTracker = () => {
       setSelectedItem(null);
     }
   }, [selectedItem, fetchData, showAlert]);
+
+  const handleEdit = useCallback(() => {
+    if (!selectedItem) return;
+
+    // Store the expense ID for updating
+    setEditingExpenseId(selectedItem.id);
+
+    // Populate the expense form with the selected item's data
+    setNewExpense({
+      amount: selectedItem.amount.toString(),
+      description: selectedItem.description,
+      categoryId: selectedItem.categories?.id || selectedItem.category?.id || "",
+      date: new Date(selectedItem.created_at).toISOString().split("T")[0],
+      receiptImage: null, // Reset receipt image for now, could be enhanced
+    });
+    setIsEditing(true);
+    setExpenseActionModalVisible(false);
+    setExpenseModalVisible(true);
+    setSelectedItem(null);
+  }, [selectedItem]);
+
+  const handleUpdateExpense = useCallback(async () => {
+    if (!editingExpenseId || !userdetails?.id) return;
+
+    // Validate required fields
+    if (!newExpense.amount || !newExpense.description || !newExpense.categoryId) {
+      showAlert("Validation Error", "Please fill in all required fields.", "error");
+      return;
+    }
+
+    // Validate amount is a valid number
+    const amountValue = parseFloat(newExpense.amount);
+    if (isNaN(amountValue) || amountValue <= 0) {
+      showAlert("Validation Error", "Please enter a valid amount greater than 0.", "error");
+      return;
+    }
+
+    try {
+      await updateExpense(editingExpenseId, newExpense, userdetails.id);
+      showAlert("Success", "Expense updated successfully!", "success");
+      setExpenseModalVisible(false);
+      setIsEditing(false);
+      setEditingExpenseId(null);
+      setNewExpense({
+        amount: "",
+        description: "",
+        categoryId: "",
+        date: new Date().toISOString().split("T")[0],
+        receiptImage: null,
+      });
+      setScannedImage(null);
+      await fetchData();
+    } catch (error) {
+      showAlert("Error", `Failed to update expense! ${error.message}`, "error");
+    }
+  }, [editingExpenseId, newExpense, userdetails?.id, fetchData, showAlert]);
 
   const handleDeleteAllAction = useCallback(async () => {
     // Use ref instead of state to get current selected items
@@ -1216,13 +1275,17 @@ const ExpenseTracker = () => {
 
       <AddExpenseModal
         visible={isExpenseModalVisible}
-        onClose={() => setExpenseModalVisible(false)}
-        onAdd={addExpense}
+        onClose={() => {
+          setExpenseModalVisible(false);
+          setIsEditing(false);
+        }}
+        onAdd={isEditing ? handleUpdateExpense : addExpense}
         categories={categories}
         expense={newExpense}
         setExpense={setNewExpense}
         scannedImage={scannedImage}
         handleImageSelected={handleImageSelected}
+        isEditing={isEditing}
       />
 
 
@@ -1250,12 +1313,26 @@ const ExpenseTracker = () => {
       </CustomModal>
 
       <CustomModal
-        title="Are you sure you want to delete this entry?"
+        title="Expense Options"
         modalVisible={isExpenseActionModalVisible}
-        primaryButtonText="Delete"
-        onPrimaryPress={handleDelete}
         onSecondaryPress={() => setExpenseActionModalVisible(false)}
-      />
+        secondaryButtonText="Cancel"
+      >
+        <View className="w-full">
+          <TouchableOpacity
+            className="bg-blue-500 p-4 rounded-lg mb-3"
+            onPress={handleEdit}
+          >
+            <Text className="text-white text-center font-semibold text-lg">Edit Expense</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="bg-red-500 p-4 rounded-lg"
+            onPress={handleDelete}
+          >
+            <Text className="text-white text-center font-semibold text-lg">Delete Expense</Text>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
       <CustomModal
         title={`Delete ${selectedItemsRef.current?.length || 0} Selected Expense${selectedItemsRef.current?.length === 1 ? '' : 's'}?`}
         modalVisible={isDeleteModalVisible}

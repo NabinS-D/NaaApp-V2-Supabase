@@ -88,7 +88,11 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@types/react": "~18.3.12",
+    "expo-auth-session": "~6.0.3",
+    "expo-crypto": "~14.0.2",
+    "expo-web-browser": "~14.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

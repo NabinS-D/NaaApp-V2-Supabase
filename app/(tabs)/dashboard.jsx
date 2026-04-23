@@ -192,7 +192,10 @@ export default function Dashboard() {
   // Function to show detailed modal (only called from legend)
   const showDetailedModal = (item) => {
     const categoryExpenses = filteredExpenses.filter(
-      (expense) => expense.category?.category_name?.trim() === item.categoryName.trim()
+      (expense) => {
+        const category_name = expense.categories?.category_name || expense.category?.category_name;
+        return category_name?.trim() === item.categoryName.trim();
+      }
     );
     setSelectedCategory({
       category: item.categoryName, // Use full category name instead of truncated text
@@ -366,10 +369,6 @@ export default function Dashboard() {
             {/* Conditionally render month picker or date range picker */}
             {filterMode === "month" ? (
               <View>
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-gray-600 font-pmedium">Month:</Text>
-                  <Text className="text-gray-600 font-pmedium">Year:</Text>
-                </View>
                 <View className="flex-row items-center justify-between">
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Picker

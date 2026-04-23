@@ -31,7 +31,7 @@ const GoogleAuth = ({ onSuccess, onError }) => {
 
             const userInfo = await GoogleSignin.signIn();
 
-            if (userInfo.data.idToken) {
+            if (userInfo.data && userInfo.data.idToken) {
                 const result = await signInWithIdToken(userInfo.data.idToken);
 
                 if (result.error) {
@@ -41,8 +41,6 @@ const GoogleAuth = ({ onSuccess, onError }) => {
                 } else {
                     onSuccess?.(result.data);
                 }
-            } else {
-                throw new Error('No ID token present!');
             }
         } catch (error) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {

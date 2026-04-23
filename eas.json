@@ -10,10 +10,17 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "channel": "development"
     },
     "preview": {
+      "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "channel": "preview"
     },
     "production": {
