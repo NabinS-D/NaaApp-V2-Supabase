@@ -18,6 +18,7 @@ const CustomModal = ({
   onPrimaryPress,
   onSecondaryPress,
   showPrimaryButton = true,
+  showSecondaryButton = true,
 }) => {
   const [loading, setLoading] = useState(false); // Track loading state
 
@@ -72,16 +73,18 @@ const CustomModal = ({
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onSecondaryPress}
-              activeOpacity={0.7}
-              disabled={loading}
-            >
-              <Text className="text-black font-psemibold text-base text-center">
-                {secondaryButtonText}
-              </Text>
-            </TouchableOpacity>
+            {showSecondaryButton && (
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={onSecondaryPress}
+                activeOpacity={0.7}
+                disabled={loading}
+              >
+                <Text className="text-black font-psemibold text-base text-center">
+                  {secondaryButtonText}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

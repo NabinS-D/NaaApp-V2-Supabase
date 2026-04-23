@@ -472,7 +472,7 @@ export default function Dashboard() {
                   <BarChart
                     data={barChartData}
                     width={barChartWidth}
-                    height={200}
+                    height={300}
                     barWidth={35}
                     spacing={10}
                     noOfSections={5}
@@ -483,6 +483,7 @@ export default function Dashboard() {
                     yAxisColor="#F5F5F5"
                     xAxisColor="#F5F5F5"
                     animationDuration={800}
+                    yAxisMax={Math.max(...Object.values(categoryTotals)) * 1.2}
                   />
                 </ScrollView>
               </View>

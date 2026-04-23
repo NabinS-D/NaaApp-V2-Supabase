@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import { RefreshControl, ScrollView, Text, View, ActivityIndicator, TouchableOpacity } from "react-native";
 import React, { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -63,11 +63,15 @@ const Header = memo(({ onExportStart, onExportComplete, categories = [], showAle
 });
 
 // Memoized Category Item Component
-const CategoryItem = memo(({ category, onEdit, onDelete }) => {
+const CategoryItem = memo(({ category, onEdit, onDelete, onPress }) => {
   if (!category) return null;
 
   return (
-    <View className="flex-row items-center p-4 bg-white border border-gray-200 rounded-lg shadow-sm mb-2">
+    <TouchableOpacity 
+      className="flex-row items-center p-4 bg-white border border-gray-200 rounded-lg shadow-sm mb-2"
+      onPress={() => onPress(category)}
+      activeOpacity={0.7}
+    >
       <Text
         className="flex-1 text-gray-800 text-lg font-medium pr-2"
         numberOfLines={1}
@@ -86,14 +90,14 @@ const CategoryItem = memo(({ category, onEdit, onDelete }) => {
         />
         <CustomButton
           title="Delete"
-          containerStyles="rounded-md bg-red-500 px-3 w-[60px]"
+          containerStyles="rounded-md bg-red-500 px-3 w-[70px]"
           textStyles="text-white text-sm font-medium"
           handlePress={() => onDelete(category.id)}
           buttoncolor="bg-red-500"
           fullWidth={false}
         />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -151,6 +155,40 @@ const DeleteModal = memo(({ visible, onClose, onDelete, expenseCount }) => (
   </CustomModal>
 ));
 
+// Memoized Detail Modal Component
+const DetailModal = memo(({ visible, onClose, category }) => {
+  if (!category) return null;
+
+  return (
+    <CustomModal
+      modalVisible={visible}
+      onSecondaryPress={onClose}
+      title="Category Details"
+      primaryButtonText="Close"
+      secondaryButtonText=""
+      onPrimaryPress={onClose}
+      showSecondaryButton={false}
+    >
+      <View className="w-full">
+        <View className="mb-4">
+          <Text className="text-gray-600 text-sm mb-1">Category Name</Text>
+          <Text className="text-gray-800 text-lg font-bold">{category.category_name}</Text>
+        </View>
+        <View className="flex-row justify-between mb-4">
+          <View className="flex-1 mr-2">
+            <Text className="text-gray-600 text-sm mb-1">Expense Count</Text>
+            <Text className="text-gray-800 text-lg font-bold">{category.expenseCount || 0}</Text>
+          </View>
+          <View className="flex-1 ml-2">
+            <Text className="text-gray-600 text-sm mb-1">Total Amount</Text>
+            <Text className="text-gray-800 text-lg font-bold">Rs {category.totalAmount || '0.00'}</Text>
+          </View>
+        </View>
+      </View>
+    </CustomModal>
+  );
+});
+
 const CategoryList = () => {
   const { userdetails } = useGlobalContext();
   const { showAlert } = useAlertContext();
@@ -166,6 +204,8 @@ const CategoryList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDetailVisible, setIsDetailVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Memoized fetch categories function
   const fetchCategories = useCallback(async () => {
@@ -289,6 +329,11 @@ const CategoryList = () => {
     setIsExporting(false);
   }, []);
 
+  const handleDetailPress = useCallback((category) => {
+    setSelectedCategory(category);
+    setIsDetailVisible(true);
+  }, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#7C1F4E", paddingTop: 20 }}>
       <View className="mx-4">
@@ -315,6 +360,7 @@ const CategoryList = () => {
                   key={category.id}
                   category={category}
                   onEdit={handleEdit}
+                  onPress={handleDetailPress}
                   onDelete={async (id) => {
                     setCurrentCategoryId(id);
                     // Check for related expenses before showing delete modal
@@ -348,6 +394,12 @@ const CategoryList = () => {
             onClose={() => setIsDeleteVisible(false)}
             onDelete={() => handleDelete(currentCategoryId)}
             expenseCount={expenseCount}
+          />
+
+          <DetailModal
+            visible={isDetailVisible}
+            onClose={() => setIsDetailVisible(false)}
+            category={selectedCategory}
           />
         </ScrollView>
       )}

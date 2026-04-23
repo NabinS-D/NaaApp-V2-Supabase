@@ -158,6 +158,12 @@ const ExportData = ({
             const randomNumber = Math.floor(Math.random() * 100000);
             const fileName = `NaaApp_${title.replace(/\s+/g, '_')}_${timestamp}_${randomNumber}.pdf`;
 
+            // Calculate total expenses
+            const totalExpenses = data.reduce((sum, item) => {
+                const amount = parseFloat(item.amount);
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+
             // Generate HTML for PDF
             const htmlContent = `
             <html>
@@ -169,7 +175,7 @@ const ExportData = ({
                         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
                         th { background-color: #C71585; color: white; }
                         tr:nth-child(even) { background-color: #F5F5F5; }
-                        .total { font-weight: bold; }
+                        .total { font-weight: bold; background-color: #C71585; color: white; }
                     </style>
                 </head>
                 <body>
@@ -187,6 +193,15 @@ const ExportData = ({
             }).join('')}
                             </tr>
                         `).join('')}
+                        <tr class="total">
+                            ${columns?.map(col => {
+                if (col.key === 'amount') {
+                    return `<td>Total: Rs ${totalExpenses.toFixed(2)}</td>`;
+                } else {
+                    return `<td></td>`;
+                }
+            }).join('')}
+                        </tr>
                     </table>
                 </body>
             </html>
