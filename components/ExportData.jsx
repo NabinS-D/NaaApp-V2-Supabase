@@ -175,7 +175,7 @@ const ExportData = ({
                         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
                         th { background-color: #C71585; color: white; }
                         tr:nth-child(even) { background-color: #F5F5F5; }
-                        .total { font-weight: bold; background-color: #C71585; color: white; }
+                        .total { font-weight: bold; background-color: #C71585; color: #000000; }
                     </style>
                 </head>
                 <body>

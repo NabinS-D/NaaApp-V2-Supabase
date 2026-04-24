@@ -27,6 +27,7 @@
       "android": {
         "buildType": "apk"
       },
+      "distribution": "internal",
       "channel": "production"
     }
   },
